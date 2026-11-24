@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopee Ads Safety Checker</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Konfigurasi Tailwind: dark mode via class + warna Shopee
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          shopee: { orange: '#EE4D2D', dark: '#D23F1F', light: '#F69B83' }
+        },
+        fontFamily: {
+          sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif']
+        }
+      }
+    }
+  };
+</script>
+<style>
+  body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+  /* Badge status */
+  .badge-aman { background: #dcfce7; color: #166534; }
+  .badge-waspada { background: #fef9c3; color: #854d0e; }
+  .badge-bahaya { background: #fee2e2; color: #991b1b; }
+  .badge-data { background: #e5e7eb; color: #4b5563; }
+  .dark .badge-aman { background: #14532d; color: #bbf7d0; }
+  .dark .badge-waspada { background: #713f12; color: #fde68a; }
+  .dark .badge-bahaya { background: #7f1d1d; color: #fecaca; }
+  .dark .badge-data { background: #374151; color: #d1d5db; }
+  /* Border kiri metrik sesuai status */
+  .border-aman { border-left-color: #22c55e; }
+  .border-waspada { border-left-color: #eab308; }
+  .border-bahaya { border-left-color: #ef4444; }
+  .border-data { border-left-color: #9ca3af; }
+  /* Hilangkan spinner input number */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+  /* Smooth transition untuk dark mode */
+  * { transition: background-color .2s, border-color .2s, color .2s; }
+  /* Radio fase aktif (di-style via JS, bukan :checked) */
+  .fase-pill.active {
+    background: #EE4D2D !important;
+    color: white !important;
+    border-color: #EE4D2D !important;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+
+<div class="max-w-5xl mx-auto px-4 py-6">
+
+  <!-- Header -->
+  <header class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl bg-shopee-orange flex items-center justify-center text-white font-extrabold text-xl shadow-sm">S</div>
+      <div>
+        <h1 class="text-lg sm:text-xl font-bold leading-tight">Shopee Ads Safety Checker</h1>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Cek apakah iklan produk Anda aman, waspada, atau bahaya</p>
+      </div>
+    </div>
+    <button id="themeToggle" type="button" aria-label="Ganti tema"
+      class="p-2.5 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">
+      <svg id="iconSun" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.36-6.36l-.71.71M6.34 17.66l-.71.71m12.02 0l-.71-.71M6.34 6.34l-.71-.71M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+      <svg id="iconMoon" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+    </button>
+  </header>
+
+  <!-- Form -->
+  <section class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sm:p-5 mb-6">
+    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+      <h2 class="font-semibold text-base sm:text-lg">Input Data</h2>
+      <div class="flex gap-2">
+        <button id="sampleBtn" type="button" class="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-shopee-orange text-white hover:bg-shopee-dark font-medium">Isi contoh data</button>
+        <button id="resetBtn" type="button" class="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">Reset</button>
+      </div>
+    </div>
+
+    <!-- Bagian A -->
+    <div class="mb-5">
+      <h3 class="font-medium text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">A. Data Produk</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <label for="hargaJual" class="block text-sm font-medium mb-1">1. Harga jual (Rp)</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">Rp</span>
+            <input type="number" id="hargaJual" min="0" step="1000" inputmode="numeric"
+              class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-shopee-orange focus:border-shopee-orange outline-none">
+          </div>
+          <p id="hargaJual-err" class="text-xs text-red-500 mt-1 hidden"></p>
+        </div>
+        <div>
+          <label for="adminFee" class="block text-sm font-medium mb-1">2. Admin fee (%)</label>
+          <div class="relative">
+            <input type="number" id="adminFee" min="0" max="100" step="0.1" inputmode="decimal"
+              class="w-full pr-9 pl-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-shopee-orange focus:border-shopee-orange outline-none">
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">%</span>
+          </div>
+          <p id="adminFee-err" class="text-xs text-red-500 mt-1 hidden"></p>
+        </div>
+        <div>
+          <label for="voucher" class="block text-sm font-medium mb-1">3. Voucher/diskon penjual (%)</label>
+          <div class="relative">
+            <input type="number" id="voucher" min="0" max="100" step="0.1" inputmode="decimal"
+              class="w-full pr-9 pl-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-shopee-orange focus:border-shopee-orange outline-none">
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">%</span>
+          </div>
+          <p id="voucher-err" class="text-xs text-red-500 mt-1 hidden"></p>
+        </div>
+        <div>
+          <label for="hpp" class="block text-sm font-medium mb-1">4. HPP / modal per produk (Rp)</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">Rp</span>
+            <input type="number" id="hpp" min="0" step="1000" inputmode="numeric"
+              class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-shopee-orange focus:border-shopee-orange outline-none">
+          </div>
+          <p id="hpp-err" class="text-xs text-red-500 mt-1 hidden"></p>
+        </div>
+        <div class="sm:col-span-2">
+          <label for="biayaTambahan" class="block text-sm font-medium mb-1">5. Biaya tambahan per pesanan (Rp, opsional)</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">Rp</span>
+            <input type="number" id="biayaTambahan" min="0" step="500" inputmode="numeric"
+              class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-shopee-orange focus:border-shopee-orange outline-none"
+              placeholder="Ongkir ditanggung penjual, packing, biaya program. Default 0">
+          </div>
+          <p id="biayaTambahan-err" class="text-xs text-red-500 mt-1 hidden"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bagian B -->
+    <div>
+      <h3 class="font-medium text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">B. Data Iklan</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <label for="biayaIklan" class="block text-sm font-medium mb-1">6. Biaya iklan terpakai (Rp)</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">Rp</span>
+            <input type="number" id="biayaIklan" min="0" step="1000" inputmode="numeric"
+              class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-shopee-orange focus:border-shopee-orange outline-none">
+          </div>
+          <p id="biayaIklan-err" class="text-xs text-red-500 mt-1 hidden"></p>
+        </div>
+        <div>
+          <label for="impresi" class="block text-sm font-medium mb-1">7. Impresi</label>
+          <input type="number" id="impresi" min="0" step="1" inputmode="numeric"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-shopee-orange focus:border-shopee-orange outline-none">
+          <p id="impresi-err" class="text-xs text-red-500 mt-1 hidden"></p>
+        </div>
+        <div>
+          <label for="klik" class="block text-sm font-medium mb-1">8. Klik</label>
+          <input type="number" id="klik" min="0" step="1" inputmode="numeric"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-shopee-orange focus:border-shopee-orange outline-none">
+          <p id="klik-err" class="text-xs text-red-500 mt-1 hidden"></p>
+        </div>
+        <div>
+          <label for="pesanan" class="block text-sm font-medium mb-1">9. Jumlah pesanan dari iklan</label>
+          <input type="number" id="pesanan" min="0" step="1" inputmode="numeric"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-shopee-orange focus:border-shopee-orange outline-none">
+          <p id="pesanan-err" class="text-xs text-red-500 mt-1 hidden"></p>
+        </div>
+        <div>
+          <label for="omzetIklan" class="block text-sm font-medium mb-1">10. Omzet dari iklan (Rp, opsional)</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">Rp</span>
+            <input type="number" id="omzetIklan" min="0" step="1000" inputmode="numeric"
+              class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-shopee-orange focus:border-shopee-orange outline-none"
+              placeholder="Kosongkan = pesanan x harga jual">
+          </div>
+          <p id="omzetIklan-err" class="text-xs text-red-500 mt-1 hidden"></p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">11. Fase iklan</label>
+          <div class="flex gap-2" id="faseGroup">
+            <label class="flex-1 cursor-pointer fase-label" data-fase="uji">
+              <input type="radio" name="fase" value="uji" class="sr-only" checked>
+              <span class="fase-pill block text-center text-sm px-3 py-2 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">Uji coba (hari 1-7)</span>
+            </label>
+            <label class="flex-1 cursor-pointer fase-label" data-fase="stabil">
+              <input type="radio" name="fase" value="stabil" class="sr-only">
+              <span class="fase-pill block text-center text-sm px-3 py-2 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">Stabil (> 7 hari)</span>
+            </label>
+          </div>
+        </div>
+        <div>
+          <label for="lamaHari" class="block text-sm font-medium mb-1">12. Lama iklan berjalan (hari)</label>
+          <input type="number" id="lamaHari" min="0" step="1" inputmode="numeric"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-shopee-orange focus:border-shopee-orange outline-none">
+          <p id="lamaHari-err" class="text-xs text-red-500 mt-1 hidden"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hasil -->
+  <section id="results" class="space-y-4"></section>
+
+  <!-- Footer -->
+  <footer class="text-center text-xs text-gray-500 dark:text-gray-400 mt-8 py-4 border-t border-gray-200 dark:border-gray-700">
+    <p>Angka CTR, CR, dan CPC adalah patokan umum, bukan angka resmi Shopee. Sesuaikan dengan data toko Anda.</p>
+    <p class="mt-1">Dibuat untuk edukasi penjual Shopee. Bukan afiliasi resmi Shopee.</p>
+  </footer>
+</div>
+
+<!-- Toast notifikasi -->
+<div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm shadow-lg opacity-0 pointer-events-none transition-opacity z-50"></div>
+
+<script>
+/* =========================================================
+   SHOPEE ADS SAFETY CHECKER
+   Semua ambang batas dikumpulkan di THRESHOLDS agar mudah diubah
+   ========================================================= */
+const THRESHOLDS = {
+  roas: { safe: 5 },                              // Aman jika ROAS >= 5
+  acos: { safe: 20 },                             // Aman jika ACOS <= 20% (dalam %)
+  ctr: { safe: 2, warning: 1, minImpresi: 1000 }, // % ; CTR dinilai hanya jika impresi >= 1000
+  cr:  { safe: 3, warning: 1.5, minKlik: 50 },   // % ; CR dinilai hanya jika klik >= 50
+  biayaPerPesanan: { safeRatio: 0.7, warningRatio: 1.0 }, // rasio terhadap profit sebelum iklan
+  cpc: { safeRatio: 0.8, warningRatio: 1.0 },    // rasio terhadap CPC maksimal impas
+  faseUjiCoba: { roasMin: 3, maxLossMultiplier: 2 }, // toleransi ROAS 3 - BEP selama rugi <= 2x profit
+  overall: { minKlik: 50, minImpresi: 1000 }     // syarat data cukup untuk status keseluruhan
+};
+
+/* ---------- Helpers format ---------- */
+const fmtRupiah = (v) => {
+  if (v === null || v === undefined || isNaN(v)) return '-';
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v);
+};
+const fmtAngka = (v, dec = 0) => {
+  if (v === null || v === undefined || isNaN(v)) return '-';
+  return new Intl.NumberFormat('id-ID', { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(v);
+};
+const fmtPersen = (v, dec = 2) => {
+  if (v === null || v === undefined || isNaN(v)) return '-';
+  return fmtAngka(v, dec) + '%';
+};
+const num = (v) => {
+  if (v === '' || v === null || v === undefined) return 0;
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+};
+
+/* =========================================================
+   FUNGSI PURE: calculate(input) -> objek hasil kalkulasi
+   ========================================================= */
+function calculate(input) {
+  const harga         = num(input.hargaJual);
+  const adminFee      = num(input.adminFee);
+  const voucher       = num(input.voucher);
+  const hpp           = num(input.hpp);
+  const biayaTambahan = num(input.biayaTambahan);
+  const biayaIklan    = num(input.biayaIklan);
+  const impresi       = num(input.impresi);
+  const klik          = num(input.klik);
+  const pesanan       = num(input.pesanan);
+  const omzetIklanRaw = input.omzetIklan === '' || input.omzetIklan === undefined || input.omzetIklan === null ? null : num(input.omzetIklan);
+  const fase          = input.fase || 'uji';
+  const lamaHari      = num(input.lamaHari);
+
+  // Potongan admin & voucher
+  const potonganAdmin  = harga * (adminFee / 100);
+  const potonganVoucher = harga * (voucher / 100);
+
+  // Profit sebelum iklan
+  const profitSebelumIklan = harga - potonganAdmin - potonganVoucher - hpp - biayaTambahan;
+
+  // Margin sebelum iklan (%)
+  const marginSebelumIklan = harga > 0 ? (profitSebelumIklan / harga) * 100 : 0;
+
+  // BEP ROAS = harga / profit sebelum iklan (null jika profit <= 0)
+  const bepRoas = profitSebelumIklan > 0 ? harga / profitSebelumIklan : null;
+
+  // BEP ACOS (%) = profit sebelum iklan / harga x 100
+  const bepAcos = harga > 0 ? (profitSebelumIklan / harga) * 100 : null;
+
+  // Omzet iklan: jika kosong, hitung otomatis = pesanan x harga
+  const omzetIklan = (omzetIklanRaw !== null && omzetIklanRaw > 0) ? omzetIklanRaw : pesanan * harga;
+
+  // CTR (%) = klik / impresi x 100
+  const ctr = impresi > 0 ? (klik / impresi) * 100 : null;
+
+  // CPC = biaya iklan / klik
+  const cpc = klik > 0 ? biayaIklan / klik : null;
+
+  // CR (%) = pesanan / klik x 100
+  const cr = klik > 0 ? (pesanan / klik) * 100 : null;
+
+  // ROAS = omzet iklan / biaya iklan
+  const roas = biayaIklan > 0 ? omzetIklan / biayaIklan : null;
+
+  // ACOS (%) = biaya iklan / omzet iklan x 100
+  const acos = omzetIklan > 0 ? (biayaIklan / omzetIklan) * 100 : null;
+
+  // Biaya iklan per pesanan
+  const biayaPerPesanan = pesanan > 0 ? biayaIklan / pesanan : null;
+
+  // Profit bersih per pesanan
+  const profitBersihPerPesanan = profitSebelumIklan - (biayaPerPesanan || 0);
+
+  // Total profit/rugi iklan
+  const totalProfitRugiIklan = (pesanan * profitSebelumIklan) - biayaIklan;
+
+  // CPC maksimal impas = (CR / 100) x profit sebelum iklan
+  const cpcMaxImpas = cr !== null ? (cr / 100) * profitSebelumIklan : null;
+
+  return {
+    // input
+    harga, adminFee, voucher, hpp, biayaTambahan,
+    biayaIklan, impresi, klik, pesanan, omzetIklan, omzetIklanRaw,
+    fase, lamaHari,
+    // turunan
+    potonganAdmin, potonganVoucher,
+    profitSebelumIklan, marginSebelumIklan,
+    bepRoas, bepAcos,
+    ctr, cpc, cr, roas, acos,
+    biayaPerPesanan, profitBersihPerPesanan,
+    totalProfitRugiIklan, cpcMaxImpas
+  };
+}
+
+/* =========================================================
+   FUNGSI PURE: evaluate(calc) -> status tiap metrik + overall + skor
+   ========================================================= */
+function evaluate(calc) {
+  const metrics = {};
+
+  // ROAS
+  if (calc.roas === null) {
+    metrics.roas = { status: 'data', note: 'Belum ada biaya iklan' };
+  } else if (calc.profitSebelumIklan <= 0) {
+    metrics.roas = { status: 'bahaya', note: 'Profit sebelum iklan <= 0' };
+  } else if (calc.roas >= THRESHOLDS.roas.safe) {
+    metrics.roas = { status: 'aman', note: 'ROAS >= ' + THRESHOLDS.roas.safe };
+  } else if (calc.bepRoas !== null && calc.roas >= calc.bepRoas) {
+    metrics.roas = { status: 'waspada', note: 'BEP ' + fmtAngka(calc.bepRoas, 2) + ' - ' + THRESHOLDS.roas.safe };
+  } else {
+    // Di bawah BEP ROAS. Cek toleransi fase uji coba.
+    if (calc.fase === 'uji' && calc.roas >= THRESHOLDS.faseUjiCoba.roasMin &&
+        calc.totalProfitRugiIklan >= -2 * calc.profitSebelumIklan) {
+      metrics.roas = { status: 'waspada', note: 'Masih dalam toleransi fase uji coba (ROAS ' + fmtAngka(calc.roas, 2) + ')' };
+    } else {
+      metrics.roas = { status: 'bahaya', note: 'ROAS < BEP (' + (calc.bepRoas ? fmtAngka(calc.bepRoas, 2) : '-') + ')' };
+    }
+  }
+
+  // ACOS
+  if (calc.acos === null) {
+    metrics.acos = { status: 'data', note: 'Belum ada omzet iklan' };
+  } else if (calc.profitSebelumIklan <= 0) {
+    metrics.acos = { status: 'bahaya', note: 'Profit sebelum iklan <= 0' };
+  } else if (calc.acos <= THRESHOLDS.acos.safe) {
+    metrics.acos = { status: 'aman', note: 'ACOS <= ' + THRESHOLDS.acos.safe + '%' };
+  } else if (calc.bepAcos !== null && calc.acos <= calc.bepAcos) {
+    metrics.acos = { status: 'waspada', note: THRESHOLDS.acos.safe + '% - BEP ' + fmtAngka(calc.bepAcos, 2) + '%' };
+  } else {
+    metrics.acos = { status: 'bahaya', note: 'ACOS > BEP (' + (calc.bepAcos ? fmtAngka(calc.bepAcos, 2) : '-') + '%)' };
+  }
+
+  // CTR (hanya dinilai jika impresi >= 1000)
+  if (calc.impresi < THRESHOLDS.ctr.minImpresi) {
+    metrics.ctr = { status: 'data', note: 'Butuh ' + THRESHOLDS.ctr.minImpresi.toLocaleString('id-ID') + ' impresi' };
+  } else if (calc.ctr >= THRESHOLDS.ctr.safe) {
+    metrics.ctr = { status: 'aman', note: 'CTR >= ' + THRESHOLDS.ctr.safe + '%' };
+  } else if (calc.ctr >= THRESHOLDS.ctr.warning) {
+    metrics.ctr = { status: 'waspada', note: THRESHOLDS.ctr.warning + '-' + THRESHOLDS.ctr.safe + '%' };
+  } else {
+    metrics.ctr = { status: 'bahaya', note: 'CTR < ' + THRESHOLDS.ctr.warning + '%' };
+  }
+
+  // CR (hanya dinilai jika klik >= 50)
+  if (calc.klik < THRESHOLDS.cr.minKlik) {
+    metrics.cr = { status: 'data', note: 'Butuh ' + THRESHOLDS.cr.minKlik + ' klik' };
+  } else if (calc.cr >= THRESHOLDS.cr.safe) {
+    metrics.cr = { status: 'aman', note: 'CR >= ' + THRESHOLDS.cr.safe + '%' };
+  } else if (calc.cr >= THRESHOLDS.cr.warning) {
+    metrics.cr = { status: 'waspada', note: THRESHOLDS.cr.warning + '-' + THRESHOLDS.cr.safe + '%' };
+  } else {
+    metrics.cr = { status: 'bahaya', note: 'CR < ' + THRESHOLDS.cr.warning + '%' };
+  }
+
+  // CPC (relatif terhadap CPC maksimal impas)
+  if (calc.cpc === null) {
+    metrics.cpc = { status: 'data', note: 'Belum ada klik' };
+  } else if (calc.cpcMaxImpas === null || calc.cpcMaxImpas <= 0) {
+    metrics.cpc = { status: 'bahaya', note: 'Profit sebelum iklan <= 0' };
+  } else {
+    const ratio = calc.cpc / calc.cpcMaxImpas;
+    if (ratio <= THRESHOLDS.cpc.safeRatio) {
+      metrics.cpc = { status: 'aman', note: '<= 80% CPC max (' + fmtRupiah(calc.cpcMaxImpas) + ')' };
+    } else if (ratio <= THRESHOLDS.cpc.warningRatio) {
+      metrics.cpc = { status: 'waspada', note: '80-100% CPC max (' + fmtRupiah(calc.cpcMaxImpas) + ')' };
+    } else {
+      metrics.cpc = { status: 'bahaya', note: '> 100% CPC max (' + fmtRupiah(calc.cpcMaxImpas) + ')' };
+    }
+  }
+
+  // Biaya per pesanan (relatif terhadap profit sebelum iklan)
+  if (calc.biayaPerPesanan === null) {
+    metrics.biayaPerPesanan = { status: 'data', note: 'Belum ada pesanan' };
+  } else if (calc.profitSebelumIklan <= 0) {
+    metrics.biayaPerPesanan = { status: 'bahaya', note: 'Profit sebelum iklan <= 0' };
+  } else {
+    const ratio = calc.biayaPerPesanan / calc.profitSebelumIklan;
+    if (ratio <= THRESHOLDS.biayaPerPesanan.safeRatio) {
+      metrics.biayaPerPesanan = { status: 'aman', note: '<= 70% profit (' + fmtRupiah(calc.profitSebelumIklan) + ')' };
+    } else if (ratio <= THRESHOLDS.biayaPerPesanan.warningRatio) {
+      metrics.biayaPerPesanan = { status: 'waspada', note: '70-100% profit' };
+    } else {
+      metrics.biayaPerPesanan = { status: 'bahaya', note: '> 100% profit' };
+    }
+  }
+
+  // Status keseluruhan
+  let overall = 'aman';
+  let overallNote = '';
+  if (calc.profitSebelumIklan <= 0) {
+    overall = 'bahaya';
+    overallNote = 'Produk rugi bahkan sebelum iklan. Naikkan harga atau turunkan HPP/voucher.';
+  } else if (calc.klik < THRESHOLDS.overall.minKlik && calc.impresi < THRESHOLDS.overall.minImpresi) {
+    overall = 'data';
+    overallNote = 'Data iklan belum cukup untuk dinilai. Butuh minimal ' + THRESHOLDS.overall.minKlik + ' klik atau ' + THRESHOLDS.overall.minImpresi.toLocaleString('id-ID') + ' impresi.';
+  } else {
+    const statuses = [metrics.roas, metrics.acos, metrics.ctr, metrics.cr, metrics.cpc, metrics.biayaPerPesanan].map(m => m.status);
+    if (statuses.includes('bahaya')) {
+      overall = 'bahaya';
+      overallNote = 'Satu atau lebih metrik berstatus Bahaya.';
+    } else if (statuses.includes('waspada')) {
+      overall = 'waspada';
+      overallNote = 'Beberapa metrik berstatus Waspada. Perlu perbaikan.';
+    } else {
+      overall = 'aman';
+      overallNote = 'Semua metrik yang dapat dinilai berstatus Aman.';
+    }
+  }
+
+  // Skor 0-100: rata-rata dari metrik yang bisa dinilai (aman=100, waspada=50, bahaya=0)
+  let score = 0;
+  const scorable = Object.values(metrics).filter(m => m.status !== 'data');
+  if (scorable.length > 0) {
+    const points = scorable.map(m => m.status === 'aman' ? 100 : m.status === 'waspada' ? 50 : 0);
+    score = Math.round(points.reduce((a, b) => a + b, 0) / points.length);
+  }
+  if (calc.profitSebelumIklan <= 0) score = Math.min(score, 15);
+
+  return { metrics, overall, overallNote, score };
+}
+
+/* =========================================================
+   FUNGSI PURE: getStopLossAlerts(calc) -> array peringatan
+   ========================================================= */
+function getStopLossAlerts(calc) {
+  const alerts = [];
+
+  // 1. Biaya iklan >= 2x profit sebelum iklan dan pesanan = 0
+  if (calc.profitSebelumIklan > 0 && calc.biayaIklan >= 2 * calc.profitSebelumIklan && calc.pesanan === 0) {
+    alerts.push({
+      title: 'Hentikan iklan, perbaiki listing dulu',
+      desc: 'Biaya iklan ' + fmtRupiah(calc.biayaIklan) + ' sudah 2x lipat profit per unit (' + fmtRupiah(calc.profitSebelumIklan) + ') tanpa pesanan. Listing bermasalah.'
+    });
+  }
+  // 2. Klik >= 50 dan CR < 1%
+  if (calc.klik >= 50 && calc.cr !== null && calc.cr < 1) {
+    alerts.push({
+      title: 'Konversi terlalu rendah, cek harga, ulasan, dan deskripsi',
+      desc: 'CR ' + fmtPersen(calc.cr) + ' dengan ' + calc.klik + ' klik. Di bawah 1% biasanya masalah listing, bukan iklan.'
+    });
+  }
+  // 3. ROAS < 3 dengan lama iklan >= 7 hari
+  if (calc.roas !== null && calc.roas < 3 && calc.lamaHari >= 7) {
+    alerts.push({
+      title: 'Pertimbangkan hentikan atau ubah strategi',
+      desc: 'ROAS ' + fmtAngka(calc.roas, 2) + ' setelah ' + calc.lamaHari + ' hari berjalan. Sudah lewat fase uji coba tanpa perbaikan.'
+    });
+  }
+  // 4. Biaya iklan >= 1x profit sebelum iklan dan pesanan = 0
+  if (calc.profitSebelumIklan > 0 && calc.biayaIklan >= calc.profitSebelumIklan && calc.pesanan === 0 && calc.biayaIklan < 2 * calc.profitSebelumIklan) {
+    alerts.push({
+      title: 'Cek kata kunci boros',
+      desc: 'Biaya iklan ' + fmtRupiah(calc.biayaIklan) + ' sudah setara profit per unit tetapi belum ada pesanan. Mungkin ada kata kunci yang klik tapi tidak konversi.'
+    });
+  }
+
+  return alerts;
+}
+
+/* =========================================================
+   FUNGSI PURE: getSuggestions(calc, ev) -> array saran (urut prioritas)
+   ========================================================= */
+function getSuggestions(calc, ev) {
+  const out = [];
+
+  // 1. Impresi rendah
+  if (calc.impresi < THRESHOLDS.ctr.minImpresi) {
+    out.push({
+      prioritas: 'Tinggi',
+      icon: 'volume',
+      judul: 'Tambah tawaran dan kata kunci',
+      desc: 'Impresi baru ' + calc.impresi.toLocaleString('id-ID') + ' (butuh ' + THRESHOLDS.ctr.minImpresi.toLocaleString('id-ID') + '). Naikkan tawaran dan tambah kata kunci luas + long-tail untuk memperluas jangkauan.'
+    });
+  }
+
+  // 2. CTR rendah
+  if (calc.ctr !== null && calc.ctr < THRESHOLDS.ctr.safe) {
+    out.push({
+      prioritas: 'Tinggi',
+      icon: 'eye',
+      judul: 'Perbaiki foto utama, judul, dan harga coret',
+      desc: 'CTR ' + fmtPersen(calc.ctr) + ' di bawah ' + THRESHOLDS.ctr.safe + '%. Iklan tampil tapi jarang diklik. Perbaiki foto utama, judul, dan tampilkan harga coret agar menonjol.'
+    });
+  }
+
+  // 3. CTR bagus tetapi CR rendah
+  if (calc.ctr !== null && calc.ctr >= THRESHOLDS.ctr.safe && calc.cr !== null && calc.cr < THRESHOLDS.cr.safe) {
+    out.push({
+      prioritas: 'Tinggi',
+      icon: 'cart',
+      judul: 'Perkuat deskripsi, ulasan bergambar, voucher, gratis ongkir',
+      desc: 'CTR bagus (' + fmtPersen(calc.ctr) + ') tetapi CR rendah (' + fmtPersen(calc.cr) + '). Klik datang tapi tidak beli. Perkuat deskripsi, ulasan bergambar, voucher, dan gratis ongkir.'
+    });
+  }
+
+  // 4. CPC di atas CPC maksimal impas
+  if (calc.cpc !== null && calc.cpcMaxImpas !== null && calc.cpcMaxImpas > 0 && calc.cpc > calc.cpcMaxImpas) {
+    out.push({
+      prioritas: 'Tinggi',
+      icon: 'coin',
+      judul: 'Turunkan tawaran atau pakai kata kunci spesifik',
+      desc: 'CPC ' + fmtRupiah(calc.cpc) + ' sudah di atas CPC maksimal impas ' + fmtRupiah(calc.cpcMaxImpas) + '. Setiap klik merugikan. Turunkan tawaran atau pakai kata kunci lebih spesifik.'
+    });
+  }
+
+  // 5. ROAS < BEP
+  if (calc.roas !== null && calc.bepRoas !== null && calc.roas < calc.bepRoas && calc.profitSebelumIklan > 0) {
+    out.push({
+      prioritas: 'Tinggi',
+      icon: 'trendDown',
+      judul: 'Naikkan harga, turunkan voucher/HPP, atau kurangi budget',
+      desc: 'ROAS ' + fmtAngka(calc.roas, 2) + ' di bawah BEP ' + fmtAngka(calc.bepRoas, 2) + '. Iklan merugikan. Naikkan harga, turunkan voucher/HPP, atau kurangi budget sampai konversi membaik.'
+    });
+  }
+
+  // 6. ROAS Aman dan fase stabil
+  if (calc.roas !== null && calc.roas >= THRESHOLDS.roas.safe && calc.fase === 'stabil') {
+    out.push({
+      prioritas: 'Sedang',
+      icon: 'trendUp',
+      judul: 'Naikkan budget bertahap 20-30%',
+      desc: 'ROAS ' + fmtAngka(calc.roas, 2) + ' sudah Aman dan fase stabil. Naikkan budget bertahap 20-30% untuk scaling tanpa mengganggu profitabilitas.'
+    });
+  }
+
+  // 7. Profit tipis - simulasi harga minimal agar BEP ROAS <= 4
+  if (calc.bepRoas !== null && calc.bepRoas > 4 && calc.profitSebelumIklan > 0) {
+    // Rumus: harga = (hpp + biayaTambahan) / (3/4 - admin% - voucher%)
+    const adminP = calc.adminFee / 100;
+    const voucherP = calc.voucher / 100;
+    const denominator = 0.75 - adminP - voucherP;
+    let hargaMinimal = null;
+    if (denominator > 0) {
+      hargaMinimal = (calc.hpp + calc.biayaTambahan) / denominator;
+    }
+    out.push({
+      prioritas: 'Sedang',
+      icon: 'calc',
+      judul: 'Simulasi harga minimal agar BEP ROAS <= 4',
+      desc: hargaMinimal !== null
+        ? 'BEP ROAS saat ini ' + fmtAngka(calc.bepRoas, 2) + ' (margin tipis). Agar BEP ROAS <= 4, harga jual minimal ' + fmtRupiah(Math.ceil(hargaMinimal / 100) * 100) + ' dengan komponen biaya saat ini.'
+        : 'BEP ROAS ' + fmtAngka(calc.bepRoas, 2) + ' terlalu tinggi. Naikkan harga atau turunkan HPP/voucher/admin fee.'
+    });
+  }
+
+  // Urutkan berdasarkan prioritas
+  const prio = { 'Tinggi': 0, 'Sedang': 1, 'Rendah': 2 };
+  out.sort((a, b) => prio[a.prioritas] - prio[b.prioritas]);
+
+  return out.slice(0, 6);
+}
+
+/* =========================================================
+   RENDER: kumpulan fungsi tampilan
+   ========================================================= */
+const STATUS_LABEL = { aman: 'AMAN', waspada: 'WASPADA', bahaya: 'BAHAYA', data: 'DATA BELUM CUKUP' };
+const STATUS_BG = {
+  aman: 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300',
+  waspada: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 text-yellow-700 dark:text-yellow-300',
+  bahaya: 'bg-red-50 dark:bg-red-900/20 border-red-500 text-red-700 dark:text-red-300',
+  data: 'bg-gray-100 dark:bg-gray-700/40 border-gray-400 text-gray-600 dark:text-gray-300'
+};
+
+function renderOverallCard(ev, calc) {
+  const bg = STATUS_BG[ev.overall];
+  return `
+    <div class="${bg} border-l-4 rounded-xl p-5 shadow-sm">
+      <div class="flex items-start justify-between flex-wrap gap-3">
+        <div class="flex-1 min-w-[200px]">
+          <p class="text-xs uppercase tracking-wider opacity-80">Status Keseluruhan</p>
+          <h2 class="text-2xl sm:text-3xl font-extrabold mt-1">${STATUS_LABEL[ev.overall]}</h2>
+          <p class="text-sm mt-2 opacity-90">${ev.overallNote}</p>
+          ${calc.profitSebelumIklan <= 0 ? '<p class="text-sm mt-2 font-semibold text-red-700 dark:text-red-300">Produk rugi bahkan sebelum iklan. Naikkan harga atau turunkan HPP/voucher.</p>' : ''}
+        </div>
+        <div class="text-center">
+          <div class="text-4xl font-extrabold">${ev.score}</div>
+          <div class="text-xs opacity-80">skor / 100</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderFinancialSummary(calc) {
+  const rows = [
+    ['Profit sebelum iklan', fmtRupiah(calc.profitSebelumIklan), calc.profitSebelumIklan > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'],
+    ['Margin sebelum iklan', fmtPersen(calc.marginSebelumIklan), ''],
+    ['BEP ROAS', calc.bepRoas !== null ? fmtAngka(calc.bepRoas, 2) : '-', ''],
+    ['BEP ACOS', calc.bepAcos !== null ? fmtPersen(calc.bepAcos) : '-', ''],
+    ['Total profit/rugi iklan', fmtRupiah(calc.totalProfitRugiIklan), calc.totalProfitRugiIklan >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'],
+    ['Profit bersih per pesanan', fmtRupiah(calc.profitBersihPerPesanan), calc.profitBersihPerPesanan >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400']
+  ];
+  return `
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <h3 class="font-semibold mb-3">Ringkasan Finansial</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        ${rows.map(r => `
+          <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/40">
+            <p class="text-xs text-gray-500 dark:text-gray-400">${r[0]}</p>
+            <p class="font-bold text-base sm:text-lg ${r[2]}">${r[1]}</p>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderMetricCard(nama, nilai, metric, isPersen = false) {
+  const status = metric.status;
+  const labelMap = { aman: 'Aman', waspada: 'Waspada', bahaya: 'Bahaya', data: 'Data belum cukup' };
+  return `
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 border-l-4 border-${status}">
+      <div class="flex justify-between items-start mb-1">
+        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">${nama}</span>
+        <span class="badge-${status} text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap">${labelMap[status]}</span>
+      </div>
+      <div class="text-xl sm:text-2xl font-bold">${nilai}</div>
+      <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">${metric.note}</div>
+    </div>`;
+}
+
+function renderMetricsGrid(ev, calc) {
+  return `
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <h3 class="font-semibold mb-3">Metrik Iklan</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        ${renderMetricCard('ROAS', calc.roas !== null ? fmtAngka(calc.roas, 2) : '-', ev.metrics.roas)}
+        ${renderMetricCard('ACOS', calc.acos !== null ? fmtPersen(calc.acos) : '-', ev.metrics.acos, true)}
+        ${renderMetricCard('CTR', calc.ctr !== null ? fmtPersen(calc.ctr) : '-', ev.metrics.ctr, true)}
+        ${renderMetricCard('CPC', calc.cpc !== null ? fmtRupiah(calc.cpc) : '-', ev.metrics.cpc)}
+        ${renderMetricCard('CR', calc.cr !== null ? fmtPersen(calc.cr) : '-', ev.metrics.cr, true)}
+        ${renderMetricCard('Biaya per pesanan', calc.biayaPerPesanan !== null ? fmtRupiah(calc.biayaPerPesanan) : '-', ev.metrics.biayaPerPesanan)}
+      </div>
+    </div>`;
+}
+
+function renderRoasBar(calc) {
+  if (calc.roas === null || calc.bepRoas === null) {
+    return `<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <h3 class="font-semibold mb-2">Posisi ROAS</h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Data ROAS belum cukup untuk ditampilkan.</p>
+    </div>`;
+  }
+  // Skala 0 - max(10, bepRoas*1.5, roas*1.2, 5)
+  const max = Math.max(10, calc.bepRoas * 1.5, calc.roas * 1.2, 5);
+  const posRoas = Math.min(100, (calc.roas / max) * 100);
+  const posBep = Math.min(100, (calc.bepRoas / max) * 100);
+  const posTarget = Math.min(100, (THRESHOLDS.roas.safe / max) * 100);
+
+  const statusColor = calc.roas >= THRESHOLDS.roas.safe ? 'bg-green-500'
+    : calc.roas >= calc.bepRoas ? 'bg-yellow-500' : 'bg-red-500';
+
+  // Helper untuk posisi label agar tidak keluar container
+  const clampLabel = (p) => {
+    if (p < 12) return 'left: ' + p + '%; transform: translateX(0);';
+    if (p > 88) return 'left: ' + p + '%; transform: translateX(-100%);';
+    return 'left: ' + p + '%; transform: translateX(-50%);';
+  };
+
+  return `
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <h3 class="font-semibold mb-3">Posisi ROAS vs BEP &amp; Target</h3>
+      <!-- Label BEP di atas bar (absolutely positioned agar tidak tumpang tindih dengan Target) -->
+      <div class="relative h-4 mb-0.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+        <span class="absolute top-0 whitespace-nowrap" style="${clampLabel(posBep)}">▼ BEP ${fmtAngka(calc.bepRoas, 2)}</span>
+      </div>
+      <!-- Bar utama -->
+      <div class="relative h-8 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+        <!-- Background gradient patokan -->
+        <div class="absolute inset-y-0 left-0 bg-gradient-to-r from-red-300 via-yellow-200 to-green-300 dark:from-red-900/40 dark:via-yellow-900/40 dark:to-green-900/40" style="width: 100%"></div>
+        <!-- BEP marker -->
+        <div class="absolute inset-y-0 w-0.5 bg-gray-700 dark:bg-gray-200" style="left: ${posBep}%;" title="BEP ROAS"></div>
+        <!-- Target (5) marker -->
+        <div class="absolute inset-y-0 w-0.5 bg-blue-600" style="left: ${posTarget}%;" title="Target 5"></div>
+        <!-- ROAS saat ini -->
+        <div class="absolute inset-y-0 ${statusColor} rounded-l-lg flex items-center justify-end px-2" style="left: 0; width: ${posRoas}%">
+          <span class="text-xs font-bold text-white drop-shadow whitespace-nowrap">${fmtAngka(calc.roas, 2)}</span>
+        </div>
+      </div>
+      <!-- Label Target di bawah bar -->
+      <div class="relative h-4 mt-0.5 text-[10px] sm:text-xs text-blue-600 dark:text-blue-400">
+        <span class="absolute top-0 whitespace-nowrap font-medium" style="${clampLabel(posTarget)}">▲ Target ${THRESHOLDS.roas.safe}</span>
+      </div>
+      <div class="flex justify-between text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 mt-1">
+        <span>0</span>
+        <span>${fmtAngka(max, 1)}</span>
+      </div>
+      <p class="text-sm mt-2">ROAS saat ini <strong>${fmtAngka(calc.roas, 2)}</strong> &middot; BEP <strong>${fmtAngka(calc.bepRoas, 2)}</strong> &middot; Target <strong>${THRESHOLDS.roas.safe}</strong></p>
+    </div>`;
+}
+
+function renderStopLossAlerts(alerts) {
+  return `
+    <div class="space-y-2">
+      <h3 class="font-semibold text-red-700 dark:text-red-300 text-sm uppercase tracking-wide">Peringatan Stop-Loss</h3>
+      ${alerts.map(a => `
+        <div class="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-xl p-4">
+          <div class="flex gap-3">
+            <div class="flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>
+            </div>
+            <div>
+              <p class="font-semibold text-red-800 dark:text-red-200 text-sm">${a.title}</p>
+              <p class="text-xs sm:text-sm text-red-700 dark:text-red-300 mt-0.5">${a.desc}</p>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+const ICONS = {
+  volume: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>',
+  eye: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.46 12C3.73 7.94 7.52 5 12 5s8.27 2.94 9.54 7c-1.27 4.06-5.06 7-9.54 7s-8.27-2.94-9.54-7z"/></svg>',
+  cart: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>',
+  coin: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+  trendDown: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg>',
+  trendUp: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>',
+  calc: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M9 11h.01M12 11h.01M15 11V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg>'
+};
+
+const PRIO_COLOR = {
+  'Tinggi': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  'Sedang': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
+  'Rendah': 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+};
+
+function renderSuggestions(saran, overall) {
+  if (saran.length === 0) {
+    let msg = 'Tidak ada saran khusus yang cocok dengan rule saat ini.';
+    if (overall === 'aman') msg = 'Tidak ada saran khusus saat ini. Semua metrik yang dinilai berstatus Aman. Lanjutkan monitoring dan pertimbangkan scaling bertahap.';
+    else if (overall === 'waspada') msg = 'Tidak ada saran khusus yang cocok dengan rule, namun status keseluruhan WASPADA. Tinjau kata kunci, tawaran, dan listing secara manual untuk mendorong metrik ke zona Aman.';
+    else if (overall === 'bahaya') msg = 'Status BAHAYA tetapi tidak ada saran spesifik yang cocok. Cek ulang komponen biaya dan listing Anda.';
+    else if (overall === 'data') msg = 'Data iklan belum cukup. Tambah impresi/klik untuk mendapatkan saran yang lebih akurat.';
+    return `<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <h3 class="font-semibold mb-2">Saran Perbaikan</h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400">${msg}</p>
+    </div>`;
+  }
+  return `
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <h3 class="font-semibold mb-3">Saran Perbaikan</h3>
+      <div class="space-y-2">
+        ${saran.map((s, i) => `
+          <div class="flex gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700">
+            <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-shopee-orange/10 text-shopee-orange flex items-center justify-center">
+              ${ICONS[s.icon] || ''}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex justify-between items-start gap-2 mb-0.5">
+                <h4 class="font-semibold text-sm">${i + 1}. ${s.judul}</h4>
+                <span class="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${PRIO_COLOR[s.prioritas]}">${s.prioritas}</span>
+              </div>
+              <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">${s.desc}</p>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderSalinButton() {
+  return `<div class="flex justify-center pt-1">
+    <button id="salinBtn" type="button" class="text-sm px-4 py-2 rounded-lg bg-shopee-orange text-white hover:bg-shopee-dark font-medium flex items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      Salin hasil
+    </button>
+  </div>`;
+}
+
+/* =========================================================
+   BUILD RINGKASAN TEKS (untuk Salin hasil)
+   ========================================================= */
+function buildTextSummary(calc, ev, saran, alerts) {
+  const lines = [];
+  lines.push('=== Shopee Ads Safety Checker - Hasil ===');
+  lines.push('');
+  lines.push('STATUS: ' + STATUS_LABEL[ev.overall] + '  (skor: ' + ev.score + '/100)');
+  lines.push('Ringkasan: ' + ev.overallNote);
+  lines.push('');
+  lines.push('--- Ringkasan Finansial ---');
+  lines.push('Profit sebelum iklan : ' + fmtRupiah(calc.profitSebelumIklan));
+  lines.push('Margin sebelum iklan : ' + fmtPersen(calc.marginSebelumIklan));
+  lines.push('BEP ROAS             : ' + (calc.bepRoas !== null ? fmtAngka(calc.bepRoas, 2) : '-'));
+  lines.push('BEP ACOS             : ' + (calc.bepAcos !== null ? fmtPersen(calc.bepAcos) : '-'));
+  lines.push('Total profit/rugi    : ' + fmtRupiah(calc.totalProfitRugiIklan));
+  lines.push('Profit bersih/pesanan: ' + fmtRupiah(calc.profitBersihPerPesanan));
+  lines.push('');
+  lines.push('--- Metrik Iklan ---');
+  const labelMap = { aman: 'Aman', waspada: 'Waspada', bahaya: 'Bahaya', data: 'Data belum cukup' };
+  lines.push('ROAS           : ' + (calc.roas !== null ? fmtAngka(calc.roas, 2) : '-') + '  (' + labelMap[ev.metrics.roas.status] + ')');
+  lines.push('ACOS           : ' + (calc.acos !== null ? fmtPersen(calc.acos) : '-') + '  (' + labelMap[ev.metrics.acos.status] + ')');
+  lines.push('CTR            : ' + (calc.ctr !== null ? fmtPersen(calc.ctr) : '-') + '  (' + labelMap[ev.metrics.ctr.status] + ')');
+  lines.push('CPC            : ' + (calc.cpc !== null ? fmtRupiah(calc.cpc) : '-') + '  (' + labelMap[ev.metrics.cpc.status] + ')');
+  lines.push('CR             : ' + (calc.cr !== null ? fmtPersen(calc.cr) : '-') + '  (' + labelMap[ev.metrics.cr.status] + ')');
+  lines.push('Biaya/pesanan  : ' + (calc.biayaPerPesanan !== null ? fmtRupiah(calc.biayaPerPesanan) : '-') + '  (' + labelMap[ev.metrics.biayaPerPesanan.status] + ')');
+  if (alerts.length > 0) {
+    lines.push('');
+    lines.push('--- Peringatan Stop-Loss ---');
+    alerts.forEach((a, i) => lines.push((i + 1) + '. ' + a.title + ' — ' + a.desc));
+  }
+  if (saran.length > 0) {
+    lines.push('');
+    lines.push('--- Saran Perbaikan ---');
+    saran.forEach((s, i) => lines.push((i + 1) + '. [' + s.prioritas + '] ' + s.judul + ' — ' + s.desc));
+  }
+  lines.push('');
+  lines.push('Catatan: Angka CTR, CR, dan CPC adalah patokan umum, bukan angka resmi Shopee.');
+  return lines.join('\n');
+}
+
+/* =========================================================
+   VALIDASI & READ INPUT
+   ========================================================= */
+const FIELD_IDS = ['hargaJual', 'adminFee', 'voucher', 'hpp', 'biayaTambahan', 'biayaIklan', 'impresi', 'klik', 'pesanan', 'omzetIklan', 'lamaHari'];
+const PERCENT_FIELDS = ['adminFee', 'voucher'];
+
+function validateField(id) {
+  const el = document.getElementById(id);
+  const err = document.getElementById(id + '-err');
+  if (!el || !err) return true;
+  const raw = el.value.trim();
+  err.classList.add('hidden');
+  el.classList.remove('border-red-500');
+  if (raw === '') return true; // kosong boleh (dianggap 0)
+  const n = parseFloat(raw);
+  if (isNaN(n)) {
+    err.textContent = 'Input harus berupa angka.';
+    err.classList.remove('hidden');
+    el.classList.add('border-red-500');
+    return false;
+  }
+  if (n < 0) {
+    err.textContent = 'Tidak boleh negatif.';
+    err.classList.remove('hidden');
+    el.classList.add('border-red-500');
+    return false;
+  }
+  if (PERCENT_FIELDS.includes(id) && n > 100) {
+    err.textContent = 'Persen maksimal 100.';
+    err.classList.remove('hidden');
+    el.classList.add('border-red-500');
+    return false;
+  }
+  return true;
+}
+
+function readInput() {
+  return {
+    hargaJual: document.getElementById('hargaJual').value,
+    adminFee: document.getElementById('adminFee').value,
+    voucher: document.getElementById('voucher').value,
+    hpp: document.getElementById('hpp').value,
+    biayaTambahan: document.getElementById('biayaTambahan').value,
+    biayaIklan: document.getElementById('biayaIklan').value,
+    impresi: document.getElementById('impresi').value,
+    klik: document.getElementById('klik').value,
+    pesanan: document.getElementById('pesanan').value,
+    omzetIklan: document.getElementById('omzetIklan').value,
+    lamaHari: document.getElementById('lamaHari').value,
+    fase: (document.querySelector('input[name="fase"]:checked') || {}).value || 'uji'
+  };
+}
+
+/* =========================================================
+   RENDER UTAMA
+   ========================================================= */
+function render() {
+  FIELD_IDS.forEach(validateField);
+  const input = readInput();
+  const calc = calculate(input);
+  const ev = evaluate(calc);
+  const alerts = getStopLossAlerts(calc);
+  const saran = getSuggestions(calc, ev);
+
+  const results = document.getElementById('results');
+  results.innerHTML =
+    renderOverallCard(ev, calc) +
+    renderFinancialSummary(calc) +
+    renderMetricsGrid(ev, calc) +
+    renderRoasBar(calc) +
+    (alerts.length > 0 ? renderStopLossAlerts(alerts) : '') +
+    renderSuggestions(saran, ev.overall) +
+    renderSalinButton();
+
+  const salinBtn = document.getElementById('salinBtn');
+  if (salinBtn) {
+    salinBtn.addEventListener('click', () => {
+      const text = buildTextSummary(calc, ev, saran, alerts);
+      try {
+        navigator.clipboard.writeText(text).then(() => showToast('Hasil disalin ke clipboard.')).catch(() => fallbackCopy(text));
+      } catch (e) {
+        fallbackCopy(text);
+      }
+    });
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showToast('Hasil disalin ke clipboard.');
+  } catch (e) {
+    showToast('Gagal menyalin. Salin manual ya.');
+  }
+  document.body.removeChild(ta);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('opacity-0');
+  t.classList.add('opacity-100');
+  setTimeout(() => {
+    t.classList.remove('opacity-100');
+    t.classList.add('opacity-0');
+  }, 2000);
+}
+
+/* =========================================================
+   SIMPAN & MUAT INPUT terakhir dari localStorage
+   ========================================================= */
+const STORAGE_KEY = 'shopeeAdsChecker_input_v1';
+function saveInput() {
+  try {
+    const data = readInput();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) { /* abaikan error localStorage */ }
+}
+function loadInput() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && data[id] !== undefined && data[id] !== null) el.value = data[id];
+    });
+    if (data.fase) {
+      const radio = document.querySelector('input[name="fase"][value="' + data.fase + '"]');
+      if (radio) radio.checked = true;
+    }
+  } catch (e) { /* abaikan error localStorage */ }
+}
+
+/* =========================================================
+   THEME TOGGLE
+   ========================================================= */
+function initTheme() {
+  try {
+    const saved = localStorage.getItem('shopeeAdsChecker_theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+  } catch (e) { /* abaikan */ }
+}
+function toggleTheme() {
+  const isDark = document.documentElement.classList.toggle('dark');
+  try { localStorage.setItem('shopeeAdsChecker_theme', isDark ? 'dark' : 'light'); } catch (e) {}
+}
+
+/* =========================================================
+   CONTOH DATA
+   ========================================================= */
+function isiContohData() {
+  const contoh = {
+    hargaJual: 64800, adminFee: 15, voucher: 10, hpp: 30000, biayaTambahan: 0,
+    biayaIklan: 100000, impresi: 8000, klik: 160, pesanan: 4, omzetIklan: '', lamaHari: 5,
+    fase: 'uji'
+  };
+  FIELD_IDS.forEach(id => {
+    document.getElementById(id).value = contoh[id] === 0 ? 0 : (contoh[id] || '');
+  });
+  const radio = document.querySelector('input[name="fase"][value="' + contoh.fase + '"]');
+  if (radio) radio.checked = true;
+  updateFaseUI();
+  render();
+}
+
+function resetForm() {
+  FIELD_IDS.forEach(id => { document.getElementById(id).value = ''; });
+  const radio = document.querySelector('input[name="fase"][value="uji"]');
+  if (radio) radio.checked = true;
+  updateFaseUI();
+  FIELD_IDS.forEach(id => {
+    const err = document.getElementById(id + '-err');
+    if (err) err.classList.add('hidden');
+  });
+  render();
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+function init() {
+  initTheme();
+  loadInput();
+
+  // Event listener input fields (auto-recalculate)
+  FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', () => { saveInput(); render(); });
+    }
+  });
+  document.querySelectorAll('input[name="fase"]').forEach(r => {
+    r.addEventListener('change', () => { updateFaseUI(); saveInput(); render(); });
+  });
+
+  // Tombol
+  document.getElementById('sampleBtn').addEventListener('click', isiContohData);
+  document.getElementById('resetBtn').addEventListener('click', resetForm);
+  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+  // Render pertama + sinkronisasi UI radio fase
+  updateFaseUI();
+  render();
+}
+
+// Update tampilan radio fase: beri class .active pada pill yang terpilih
+function updateFaseUI() {
+  const checked = document.querySelector('input[name="fase"]:checked');
+  const val = checked ? checked.value : 'uji';
+  document.querySelectorAll('.fase-label').forEach(label => {
+    const pill = label.querySelector('.fase-pill');
+    if (label.dataset.fase === val) pill.classList.add('active');
+    else pill.classList.remove('active');
+  });
+}
+
+init();
+</script>
+</body>
+</html>
